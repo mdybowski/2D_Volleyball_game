@@ -1,18 +1,51 @@
-# 2D-Volleyball-game
-The simple two player game in Python using Pygame and Pymunk.
+# 2D Volleyball
 
-######## Instructions #########
+A local two-player volleyball game built with Python, Pygame, and Pymunk. Play as Poland or Brazil, with physics-based ball movement and keyboard controls.
 
-If you have installed Python on your computer and Pygame and Pymunk libraries, run Volleyball.py in code folder.
-If not, unzip Volleyball folder and run Volleyball.exe to play.
+Updated for compatibility with **Python 3.15**.
 
-Use left and right arrow keys on your keyboard to move Player 1 (Poland) and up arrow key to jump.
-Use A and D keys on your keyboard to move Player 2 (Brasil) and W key to jump.
+## Running the Game
 
-Press P to pause/resume game, V to stop/play music or ESC to quit game.
+### From source
 
-In the Settings.txt file in res folder, you can change window size and FPS value.
+Install Python 3.15 and the dependencies listed in `requirements.txt`:
 
-##########################
+```bash
+python -m pip install -r requirements.txt
+```
 
-Music and pictures used in the game are licensed under Creative Commons.
+From the project’s root directory, run:
+
+```bash
+cd code
+python Volleyball.py
+```
+
+Keep the `res` folder inside `code`, as it contains the resources required by the game.
+
+### Windows executable
+
+Extract the entire `Volleyball.zip` archive and run `Volleyball.exe` from the extracted folder. Keep all bundled files and folders together. A separate Python installation is not required.
+
+## Controls
+
+| Action | Player 1 — Poland | Player 2 — Brazil |
+|---|---|---|
+| Move left | Left arrow | A |
+| Move right | Right arrow | D |
+| Jump | Up arrow | W |
+
+| Key | Action |
+|---|---|
+| P | Pause or resume the game |
+| V | Stop or play music |
+| R | Restart after the match ends |
+| Esc | Quit the game |
+
+## Settings
+
+Edit `res/Settings.txt` to adjust the window dimensions and target frame rate (FPS). When running from source, this file is located in `code/res/Settings.txt`.
+
+## Credits
+
+The music and images used in this project are licensed under Creative Commons.
