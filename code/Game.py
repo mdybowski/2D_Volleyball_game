@@ -10,11 +10,13 @@ from Ball import Ball
 from Frame import Ground, Wall, Net
 from Text import Text
 
+# Match debug drawing and coordinate conversion to the physics world, where y increases upwards.
 pymunk.pygame_util.positive_y_is_up = True
 
 
 class Game:
 
+    # Resource paths are relative to the working directory used to launch the game.
     CAPTION = 'Volleyball'
     GRAVITY = (0.0, -900.0)
     BACKGROUND = "res/img/background.png"
@@ -22,11 +24,14 @@ class Game:
     BOUNCE_SOUND = "res/sounds/Bounce.wav"
     JUMP_SOUND = "res/sounds/Jump.wav"
     SETTINGS = "res/Settings.txt"
+    # Fixed simulated time per frame.
     STEP_WORLD = 1/50.0
+    # Class-level state records the point winner and the between-points delay.
     gained_point = {'player1': False, 'player2': False}
     break_timer = 0
 
     def __init__(self, window_size, fps):
+        """Initialize audio, display, scaled physics objects, and interface resources."""
         window = pymunk.Vec2d(*window_size)
 
         self.window = window
@@ -35,6 +40,7 @@ class Game:
         self.paused = False
         self.waiting = False
 
+        # Set audio parameters
         pygame.mixer.pre_init(44100, -16, 2, 2048)
         pygame.mixer.init()
         pygame.init()
@@ -59,9 +65,11 @@ class Game:
 
         players_radius = Player.RADIUS * self.scale_factor['x']
 
+        # Place player 1 on the right and player 2 on the left.
         start_pos_first_player = (window.x - window.x / 24 - players_radius, window.y / 22 + players_radius)
         start_pos_second_player = (players_radius + window.x / 24, window.y / 22 + players_radius)
 
+        # Each player has a separate ball position for serving.
         start_ball_pos_for_first_player = (3 * window.x / 4 - window.x / 12, window.y / 2 + window.y / 13)
         start_ball_pos_for_second_player = (window.x / 4 + window.x / 12, window.y / 2 + window.y / 13)
 
@@ -74,6 +82,7 @@ class Game:
         self.frames = self.create_frames(self.space, window, self.scale_factor)
         self.game_texts = self.create_texts(window, self.scale_factor)
 
+        # Load assets once, player and ball images are sized to their collision diameters.
         self.background = self.load_image(window_size, self.BACKGROUND, True)
         self.ball_image = self.load_image((int(2 * self.ball.get_radius()),
                                            int(2 * self.ball.get_radius())), Ball.IMAGE, False)
@@ -82,10 +91,12 @@ class Game:
         self.player2_image = self.load_image((int(2 * self.player2.get_radius()),
                                               int(2 * self.player2.get_radius())), Player.IMAGE['player2'], False)
 
+        # Render collision shapes
         self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
         self.draw_options.flags = pymunk.SpaceDebugDrawOptions.DRAW_SHAPES
 
     def pause(self):
+        """Save motion states before putting active bodies to sleep."""
         self.paused = True
         self.ball.save_attributes_to_pause()
         self.player1.save_attribute_to_pause()
@@ -98,12 +109,14 @@ class Game:
             self.player2.sleep()
 
     def resume(self):
+        """Restore the motion states saved when the game was paused."""
         self.paused = False
         self.ball.wakes_up()
         self.player1.wakes_up()
         self.player2.wakes_up()
 
     def restart(self):
+        """Clear the winner and scores so another match can begin."""
         self.paused = False
         self.game_texts['winner_text'] = None
         self.player1.clear_score()
@@ -112,15 +125,19 @@ class Game:
                                                      self.window.x / 2, 0.25 * self.window.y)
 
     def is_paused(self):
+        """Report whether the game is paused, including the end-of-match pause."""
         return self.paused
 
     def wait(self, waiting):
+        """Set the separate state used for the short break after a point."""
         self.waiting = waiting
 
     def is_waiting(self):
+        """Report whether the between-points break is active."""
         return self.waiting
 
     def check_if_someone_won(self):
+        """Ask each player to evaluate its win condition, then pause and show the winner."""
         if self.player1.check_if_won():
             self.player1.is_winner()
             self.pause()
@@ -133,15 +150,18 @@ class Game:
                                                   'PLAYER 2 WON', self.window.x / 2, self.window.y / 2)
 
     def end_game(self):
+        """Return the winner label."""
         return self.game_texts['winner_text']
 
     def update_general_score_text(self):
+        """Display scores in court order: player 2 on the left, player 1 on the right."""
         self.game_texts['general_score_text'] = Text(Text.MAIN_FONT, self.scale_factor['xy'],
                                                      Text.BLACK, '{}:{}'.format(self.player2.get_score(),
                                                                                 self.player1.get_score()),
                                                      self.window.x / 2, 0.25 * self.window.y)
 
     def update_player1(self, list_of_events):
+        """Handle arrow-key controls and keep player 1 on the right side of the court."""
         for event in list_of_events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP and not self.player1.is_jumping():
@@ -151,12 +171,14 @@ class Game:
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
                     self.player1.stop()
 
+        # Detect landing with a scaled tolerance and restore the standing height.
         if self.player1.get_position().y <= self.player1.get_start_position().y + 20 * self.scale_factor['y'] and\
                 self.player1.is_falling():
             self.player1.set_jumping(False)
             self.player1.definitive_stop()
             self.player1.set_position((self.player1.get_position().x, self.player1.get_start_position().y))
 
+        # Block movement toward the net or beyond the outer court boundary.
         if self.player1.get_position().x - self.player1.get_radius() <=\
                 self.frames['net'].get_positions()[0].x + 0.3 * self.player1.get_radius():
             self.player1.set_block_move(True, 'left')
@@ -181,10 +203,12 @@ class Game:
                                            self.player1.get_position().y))
             else:
                 self.player1.moves(-1)
+        # Cancel horizontal movement when both opposing keys are held.
         if keys_pressed[K_RIGHT] and keys_pressed[K_LEFT]:
             self.player1.stop()
 
     def update_player2(self, list_of_events):
+        """Handle A/D/W controls and keep player 2 on the left side of the court."""
         for event in list_of_events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_w and not self.player2.is_jumping():
@@ -194,12 +218,14 @@ class Game:
                 if event.key == pygame.K_a or event.key == pygame.K_d:
                     self.player2.stop()
 
+        # Detect landing with a scaled tolerance and restore the standing height.
         if self.player2.get_position().y <= self.player2.get_start_position().y + 20 * self.scale_factor['y'] and\
                 self.player2.is_falling():
             self.player2.set_jumping(False)
             self.player2.definitive_stop()
             self.player2.set_position((self.player2.get_position().x, self.player2.get_start_position().y))
 
+        # Block movement toward the net or beyond the outer court boundary.
         if self.player2.get_position().x + self.player2.get_radius() >= \
                 self.frames['net'].get_positions()[0].x - 0.3 * self.player2.get_radius():
             self.player2.set_block_move(True, 'right')
@@ -224,12 +250,15 @@ class Game:
                 self.player2.set_position((self.player2.get_radius(), self.player2.get_position().y))
             else:
                 self.player2.moves(-1)
+        # Cancel horizontal movement when both opposing keys are held.
         if keys_pressed[K_a] and keys_pressed[K_d]:
             self.player2.stop()
 
     def check_if_ball_collides_with_sth(self):
+        """Track player contacts and play sounds when the ball touches court objects."""
         if self.check_collision(self.player2, self.ball):
             self.player2.set_start_rotation()
+            # Count a continuous contact only once, until the shapes separate.
             if not self.player2.collision_with_ball():
                 self.player2.increment_bounce_counter()
                 self.player2.set_collision_with_ball(True)
@@ -241,6 +270,7 @@ class Game:
 
         if self.check_collision(self.player1, self.ball):
             self.player1.set_start_rotation()
+            # Count a continuous contact only once, until the shapes separate.
             if not self.player1.collision_with_ball():
                 self.player1.increment_bounce_counter()
                 self.player1.set_collision_with_ball(True)
@@ -250,12 +280,15 @@ class Game:
         else:
             self.player1.set_collision_with_ball(False)
 
+        # Court contacts play a sound on each update in which overlap is detected.
         for key in self.frames:
             if self.check_collision(self.frames[key], self.ball):
                 pygame.mixer.Sound.play(self.bounce_ball_sound)
 
     def check_if_point_is_gained(self):
+        """Award a point for a ground contact or a bounce-limit violation."""
         player1_gained = None
+        # A fault on player 1's side awards the point and next serve to player 2.
         if self.check_collision(self.ball, self.frames['ground_player1']) or self.player1.check_bounce_counter():
             self.wait(True)
             player1_gained = False
@@ -263,10 +296,12 @@ class Game:
             self.player1.reset_bounce_counter()
             self.player2.reset_bounce_counter()
             self.player2.gained_point()
+            # Record whether the scoring player leads by at least two points.
             if self.player2.get_score() - self.player1.get_score() > 1:
                 self.player2.set_dominance(True)
             else:
                 self.player2.set_dominance(False)
+        # A fault on player 2's side awards the point and next serve to player 1.
         elif self.check_collision(self.ball, self.frames['ground_player2']) or self.player2.check_bounce_counter():
             self.wait(True)
             player1_gained = True
@@ -274,10 +309,12 @@ class Game:
             self.player2.reset_bounce_counter()
             self.player1.reset_bounce_counter()
             self.player1.gained_point()
+            # Record whether the scoring player leads by at least two points.
             if self.player1.get_score() - self.player2.get_score() > 1:
                 self.player1.set_dominance(True)
             else:
                 self.player1.set_dominance(False)
+        # Freeze the visible pose, then move physical objects away from the court.
         if self.is_waiting():
             self.player1.definitive_stop()
             self.player2.definitive_stop()
@@ -291,6 +328,7 @@ class Game:
             Game.gained_point = {'player1': player1_gained, 'player2': not player1_gained}
 
     def break_after_gained_point(self):
+        """Delay the next serve."""
         if Game.break_timer >= 20:
             self.update_general_score_text()
             self.ball.stop()
@@ -302,6 +340,7 @@ class Game:
                 self.player2.sleep()
             Game.break_timer = 0
             self.wait(False)
+            # Restore player positions and place the ball on the scoring player's side.
             self.player1.set_position_to_start_pos()
             self.player2.set_position_to_start_pos()
             if Game.gained_point['player1']:
@@ -317,6 +356,7 @@ class Game:
             Game.break_timer += 1
 
     def interface(self):
+        """Process window and keyboard events, then update the active gameplay state."""
         list_of_events = pygame.event.get()
         for event in list_of_events:
             if event.type == pygame.QUIT:
@@ -334,6 +374,7 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     self.exit_game()
 
+        # Pause blocks gameplay updates.
         if not self.is_waiting() and not self.is_paused():
             self.update_player1(list_of_events)
             self.update_player2(list_of_events)
@@ -343,8 +384,11 @@ class Game:
             self.break_after_gained_point()
 
     def step(self):
+        """Advance physics and draw one frame."""
+        # The physics step still runs during pauses, sleeping bodies remain inactive.
         self.space.step(Game.STEP_WORLD)
 
+        # Layer the background, debug geometry, interface, and sprites in that order.
         self.draw_background(self.screen, self.background)
         self.space.debug_draw(self.draw_options)
         self.draw_help_background()
@@ -366,6 +410,7 @@ class Game:
 
         self.ball.check_velocity_restrictions()
 
+        # During breaks, render saved poses rather than the off-court body positions.
         if not self.is_waiting():
             self.draw_ball()
             self.draw_players()
@@ -385,6 +430,7 @@ class Game:
 
     @staticmethod
     def create_space(gravity):
+        """Create the physics world."""
         space = pymunk.Space()
         space.gravity = gravity
         space.sleep_time_threshold = 1
@@ -392,6 +438,7 @@ class Game:
 
     @staticmethod
     def create_frames(space, window, scale_factor):
+        """Build court boundaries, a central net, and separate ground segments for scoring."""
         return {'wall_left': Wall(space, (-10 * scale_factor['x'], 0), (-10 * scale_factor['x'], window.y),
                                   10 * scale_factor['x']),
                 'wall_right': Wall(space, (window.x + 10 * scale_factor['x'], 0), (window.x + 10 * scale_factor['x'],
@@ -408,6 +455,8 @@ class Game:
 
     @staticmethod
     def create_texts(window, scale_factor):
+        """Create reusable labels and position them relative to the window dimensions."""
+        # Center score and status labels.
         general_score_text = Text(Text.MAIN_FONT, scale_factor['xy'], Text.BLACK, '0:0', window.x / 2, 0.25 * window.y)
         pause_text = Text(Text.MAIN_FONT, 3 * scale_factor['xy'], Text.RED, 'PAUSE', window.x / 2, window.y / 2)
         winner_text = None
@@ -415,6 +464,7 @@ class Game:
                             window.x / 2, 0.65 * window.y)
         quit_text = Text(Text.MAIN_FONT, 0.5 * scale_factor['xy'], Text.RED, 'PRESS ESC TO QUIT GAME',
                          window.x / 2, 0.75 * window.y)
+        # Align help labels to the right edge using their actual rendered dimensions.
         press_stop_music_text = Text(Text.MAIN_FONT, 0.2 * scale_factor['xy'], Text.BLACK, 'PRESS V TO STOP MUSIC')
         press_stop_music_text.set_text_center((window.x - press_stop_music_text.text_size.x / 2,
                                                press_stop_music_text.text_size.y / 2))
@@ -442,6 +492,7 @@ class Game:
                 'press_quit_text': press_quit_text, 'copyright_text': copyright_text}
 
     def check_collision(self, ob1, ob2):
+        """Query overlapping shapes and check whether the other object is among them."""
         shape1 = ob1.get_shape()
         shape2 = ob2.get_shape()
 
@@ -452,6 +503,7 @@ class Game:
 
     @staticmethod
     def load_image(window_size, source, with_convert):
+        """Load and resize an image."""
         if with_convert:
             picture = pygame.image.load(source).convert()
         else:
@@ -460,17 +512,21 @@ class Game:
 
     @staticmethod
     def draw_background(screen, image):
+        """Cover the display with the scaled background image."""
         screen.blit(image, (0, 0))
 
     def draw_help_background(self):
+        """Redraw the bottom strip of the background over the debug-rendered geometry."""
         surf = pygame.Surface((self.window.x, self.window.y / 22))
         surf.blit(self.background, (0, -self.window.y + self.window.y / 22))
         self.screen.blit(surf, (0, self.window.y - self.window.y / 22))
 
     def draw_text(self, text):
+        """Draw the surface and destination rectangle."""
         self.screen.blit(text[0], text[1])
 
     def draw_players(self):
+        """Convert physics centers into image top-left positions."""
         self.screen.blit(self.player1_image, (self.player1.get_position().x - self.player1.get_radius(),
                                               self.window.y - self.player1.get_position().y -
                                               self.player1.get_radius()))
@@ -479,6 +535,7 @@ class Game:
                                               self.player2.get_radius()))
 
     def fake_draw_players(self):
+        """Draw saved player positions while their physical bodies are moved off court."""
         self.screen.blit(self.player1_image, (self.player1.get_position_to_breaks().x - self.player1.get_radius(),
                                               self.window.y - self.player1.get_position_to_breaks().y -
                                               self.player1.get_radius()))
@@ -487,12 +544,14 @@ class Game:
                                               self.player2.get_radius()))
 
     def draw_ball(self):
+        """Rotate the sprite in degrees, then center the rotated image on the physical ball."""
         surf = pygame.transform.rotate(self.ball_image, math.degrees(self.ball.get_body_angle()))
         w, h = surf.get_size()
         p = pymunk.pygame_util.to_pygame(self.ball.get_position() + pymunk.Vec2d(-w / 2, h / 2), self.screen)
         self.screen.blit(surf, p)
 
     def fake_draw_ball(self):
+        """Use the saved pose to keep the ball visible during the between-points break."""
         surf = pygame.transform.rotate(self.ball_image, math.degrees(self.ball.get_position_to_breaks()['angle']))
         w, h = surf.get_size()
         p = pymunk.pygame_util.to_pygame(self.ball.get_position_to_breaks()['pos'] + pymunk.Vec2d(-w / 2, h / 2),
@@ -501,6 +560,7 @@ class Game:
 
     @staticmethod
     def handle_music():
+        """Stop music if playing, otherwise start it again from the beginning in a loop."""
         if pygame.mixer.music.get_busy():
             pygame.mixer.music.stop()
         else:
@@ -508,6 +568,7 @@ class Game:
 
     @staticmethod
     def exit_game():
+        """Stop audio, release Pygame resources, and terminate the application."""
         pygame.mixer.music.stop()
         pygame.quit()
         sys.exit()
