@@ -5,12 +5,12 @@ import pymunk.pygame_util
 class Frame:
 
     def __init__(self, space, pos1, pos2, width):
-        self.position1 = pymunk.Vec2d(pos1)
-        self.position2 = pymunk.Vec2d(pos2)
+        self.position1 = pymunk.Vec2d(*pos1)
+        self.position2 = pymunk.Vec2d(*pos2)
         self.width = width
         self.body = pymunk.Body(body_type=pymunk.Body.STATIC)
         self.shape = pymunk.Segment(self.body, pos1, pos2, width)
-        space.add(self.shape)
+        space.add(self.body, self.shape)
 
     def get_shape(self):
         return self.shape
@@ -34,7 +34,7 @@ class Wall(Frame):
 
 
 class Net(Frame):
-    NET_COLOR = (150, 80, 0)
+    NET_COLOR = (150, 80, 0, 255)
     THICKNESS = 5
 
     def __init__(self, space, pos1, pos2, width):

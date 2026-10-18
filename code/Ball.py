@@ -17,8 +17,8 @@ class Ball:
                                          Ball.MAX_VELOCITY.y * scale_factor['y'])
         self.max_angular_velocity = Ball.MAX_ANGULAR_VELOCITY * scale_factor['x']
 
-        self.start_pos_for_first_player = pymunk.Vec2d(pos_first_player)
-        self.start_pos_for_second_player = pymunk.Vec2d(pos_second_player)
+        self.start_pos_for_first_player = pymunk.Vec2d(*pos_first_player)
+        self.start_pos_for_second_player = pymunk.Vec2d(*pos_second_player)
 
         moment = pymunk.moment_for_circle(self.mass, 0, self.radius)
         self.body = pymunk.Body(self.mass, moment)

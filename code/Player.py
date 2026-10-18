@@ -16,7 +16,7 @@ class Player:
         self.jump_velocity = Player.JUMP_VELOCITY * scale_factor['y']
         self.speed = Player.VELOCITY * scale_factor['x']
 
-        self.start_pos = pymunk.Vec2d(pos)
+        self.start_pos = pymunk.Vec2d(*pos)
         self.jumping = False
         self.block_move = {'left': False, 'right': False}
         self.won = False

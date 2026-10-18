@@ -1,5 +1,7 @@
 from Game import Game
 
+import sys
+import os
 
 def open_settings(settings_path):
     try:

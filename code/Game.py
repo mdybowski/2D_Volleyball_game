@@ -10,6 +10,8 @@ from Ball import Ball
 from Frame import Ground, Wall, Net
 from Text import Text
 
+pymunk.pygame_util.positive_y_is_up = True
+
 
 class Game:
 
@@ -25,7 +27,7 @@ class Game:
     break_timer = 0
 
     def __init__(self, window_size, fps):
-        window = pymunk.Vec2d(window_size)
+        window = pymunk.Vec2d(*window_size)
 
         self.window = window
         self.FPS = fps
@@ -439,9 +441,14 @@ class Game:
                 'press_stop_music_text': press_stop_music_text, 'press_play_music_text': press_play_music_text,
                 'press_quit_text': press_quit_text, 'copyright_text': copyright_text}
 
-    @staticmethod
-    def check_collision(ob1, ob2):
-        return bool(ob1.get_shape().shapes_collide(ob2.get_shape()).points)
+    def check_collision(self, ob1, ob2):
+        shape1 = ob1.get_shape()
+        shape2 = ob2.get_shape()
+
+        return any(
+            result.shape is shape2
+            for result in self.space.shape_query(shape1)
+        )
 
     @staticmethod
     def load_image(window_size, source, with_convert):
